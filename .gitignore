@@ -6,3 +6,4 @@ venv/
 
 # Ignorar caches do Python
 __pycache__/
+pyrightconfig.json
