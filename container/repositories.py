@@ -1,7 +1,11 @@
 # container/repositories.py
+from repositories.user_repository import UserRepository
+
 class RepositoryContainer:
     def __init__(self):
-        pass
+        self._repositories = {
+            "user": UserRepository() 
+        }
 
-    def get(self, repository_name: str):
-        pass
+    def get(self, name: str):
+        return self._repositories.get(name)

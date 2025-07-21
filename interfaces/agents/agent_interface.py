@@ -1,34 +1,23 @@
 # interfaces/agents/agent_interface.py
-
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TypedDict, Any
 
-# Este bloco só é lido por verificadores de tipo, evitando importações circulares em tempo de execução
-if TYPE_CHECKING:
-    from container.clients import ClientContainer
-    from container.repositories import RepositoryContainer
+class AgentResponse(TypedDict):
+    status: str
+    message: str | None
+    tool_data: dict[str, Any] | None
 
 class IAgent(ABC):
+    @property
+    @abstractmethod
+    def id(self) -> str: ...
 
     @property
     @abstractmethod
-    def instructions(self) -> str:
-        """As instruções de sistema (system prompt) para o agente."""
-        ...
+    def name(self) -> str: ...
 
-    @property
+    # A assinatura correta e padronizada para todos os agentes
     @abstractmethod
-    def tools(self) -> list:
-        """Uma lista com as definições de ferramentas (functions) que o agente pode usar."""
-        ...
-
-    @staticmethod
-    @abstractmethod
-    def factory(client_container: "ClientContainer", repository_container: "RepositoryContainer") -> "IAgent":
-        """Um método estático que atua como uma fábrica para criar uma instância do agente."""
-        ...
-        
-    @abstractmethod
-    async def execute(self, customer: dict, orchestrator_output: list, context: list) -> str:
+    async def execute(self, context: list[dict], phone: str, user: dict | None) -> AgentResponse:
         """O principal método de execução do agente."""
         ...

@@ -1,79 +1,94 @@
-# main.py
+# main.py (com a anotação de tipo)
 import asyncio
 import json
+
 from container.agents import AgentContainer
 from container.clients import ClientContainer
 from container.repositories import RepositoryContainer
+from services.response_orchestrator import ResponseOrchestrator
+# --- MUDANÇA 1: Importar a interface do repositório de conversas ---
+from interfaces.repositories.conversation_repository_interface import IConversationRepository
 
 async def main():
-    print("Iniciando o sistema de agentes...")
+    print("Iniciando o sistema de agentes com o Orquestrador...")
 
-    # 1. Inicializa os containers de dependência
+    # --- 1. Preparação das Dependências ---
     client_container = ClientContainer()
     repository_container = RepositoryContainer()
-
-    # 2. Inicializa o container de agentes, que vai descobrir e registrar o RoteiroAgent
     agent_container = AgentContainer(client_container, repository_container)
+    
+    all_agents_list = agent_container.all()
+    print(f"Agentes registrados: {[agent.id for agent in all_agents_list]}")
+    
+    agents_dict = {agent.id: agent for agent in all_agents_list}
+    
+    ai_client = client_container.get("async_openai") 
+    
+    # --- 2. Raiz de Composição: Montando o Orquestrador ---
+    orchestrator = ResponseOrchestrator(
+        ai_client=ai_client, 
+        agents=agents_dict, 
+        repositories=repository_container
+    )
 
-    # 3. Recupera o Agente_roteiro pelo seu ID
-    roteiro_agent = agent_container.get("#1")
+    # --- 3. Lógica da Aplicação ---
+    # --- MUDANÇA 2: Adicionamos a anotação de tipo aqui ---
+    conversation_repo: IConversationRepository = repository_container.get("conversation")
+    
+    if not conversation_repo:
+        raise RuntimeError("Erro crítico: Repositório de conversas não foi inicializado.")
 
-    if not roteiro_agent:
-        print("Erro: Agente de roteiro não encontrado. Verifique o ID ou o processo de registro.")
-        return
-
-    print(f"Agente encontrado: {roteiro_agent.name} (ID: {roteiro_agent.id})")
-
-    orchestrator_output = []
-    # O contexto do agente é armazenado aqui para manter o estado da conversa
-    agent_context_state = {}
-
-    print("\n--- Início da Conversa com o Agente_roteiro ---")
+    session_id = "cli_test_session" 
+    history = conversation_repo.get_history(session_id)
+    
+    if not history:
+        print("\n--- Início da Conversa com o Orquestrador ---")
+    else:
+        print(f"\n--- Continuando conversa da sessão {session_id} ---")
+        
+    print("Você pode perguntar sobre roteiros, parques, etc.")
     print("Digite 'sair' a qualquer momento para encerrar.")
 
-    # Primeira interação simulada para iniciar a conversa
-    user_input = "Olá, quero planejar uma viagem para Orlando."
-
     while True:
-        print(f"\nVocê: {user_input}")
-        orchestrator_output.append({"role": "user", "content": user_input})
+        user_input = input("\nVocê: ")
+        if user_input.lower() == 'sair':
+            break
 
-        # Prepara o contexto para o agente.
-        # Ele espera uma lista de dicionários, onde cada um pode ter um 'agent_id' e seu 'state'.
-        current_context_for_agent = [{"agent_id": roteiro_agent.id, "state": agent_context_state}] if agent_context_state else []
+        history.append({"role": "user", "content": user_input})
 
-        # Executa o agente com a entrada do usuário e o contexto atual
-        agent_response_json = await roteiro_agent.execute(
-            customer={}, # Informações do cliente, se houver
-            orchestrator_output=orchestrator_output,
-            context=current_context_for_agent
+        print("Orquestrador pensando...")
+        agent_response_or_string = await orchestrator.execute(
+            context=history, 
+            phone="cli_test"
         )
 
-        agent_output = json.loads(agent_response_json)
-        response_content = agent_output['response']
-        new_agent_state = agent_output['context']['state']
-        agent_context_state = new_agent_state.get("collected_data", {}) # Atualiza o estado para a próxima iteração
-
-        if response_content['action'] == "tool_call":
-            print("\n--- Agente acionou a função 'roteiro'! ---")
-            print(f"Nome da Ferramenta: {response_content['tool_name']}")
-            print(f"Argumentos Coletados:")
-            print(json.dumps(response_content['arguments'], indent=2, ensure_ascii=False))
-            print("\nO roteiro seria gerado agora com base nestes dados.")
-            break # Encerra o loop, pois o agente coletou tudo
-
-        elif response_content['action'] == "ask_user":
-            print(f"\nAgente: {response_content['message']}")
-            user_input = input("Sua resposta: ")
-            if user_input.lower() == 'sair':
-                print("Conversa encerrada.")
-                break
-            # O loop continua com a nova entrada do usuário
+        final_message = ""
+        # Lógica de tratamento de resposta
+        if isinstance(agent_response_or_string, list) and agent_response_or_string:
+            final_message = agent_response_or_string[0].get("content", "Recebi uma resposta, mas sem conteúdo.")
+        elif isinstance(agent_response_or_string, str):
+            try:
+                roteiro_output = json.loads(agent_response_or_string)
+                response_data = roteiro_output.get('response', {})
+                if response_data.get('action') == 'tool_call':
+                    final_message = "Ok, tenho todas as informações! O roteiro seria gerado agora."
+                else:
+                    final_message = response_data.get('message', "Recebi uma resposta do agente, mas sem mensagem.")
+            except json.JSONDecodeError:
+                final_message = f"O agente retornou um texto inesperado: {agent_response_or_string}"
         else:
-            print(f"Agente: Resposta desconhecida: {response_content}")
-            break
+            final_message = f"Formato de resposta não reconhecido: {type(agent_response_or_string)}"
+
+        print(f"\nAgente: {final_message}")
+        history.append({"role": "assistant", "content": final_message})
+        
+        conversation_repo.save_history(session_id, history)
 
     print("\n--- Fim da Interação ---")
 
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nPrograma interrompido pelo usuário.")
