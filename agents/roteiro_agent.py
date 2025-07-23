@@ -19,7 +19,7 @@ class RoteiroAgent(IAgent):
     ID = "#1"
     NAME = "Agente de Roteiro de Viagem"
     MODEL = "gpt-4o-mini"
-    TEMPERATURE = 1.0
+    TEMPERATURE = 0.5
     MAX_TOKENS = 2048
 
     def __init__(self, client: AsyncOpenAI):
@@ -39,7 +39,6 @@ class RoteiroAgent(IAgent):
     def instructions(self) -> str:
         """
         Propriedade que retorna as instruções de sistema (system prompt) para a IA.
-        COLE AQUI O CONTEÚDO EXATO DAS SUAS INSTRUÇÕES.
         """
         return """Você é o "Orlando Trip Planner", uma IA especialista em criar roteiros personalizados para viagens a Orlando (Disney World, Universal, etc.), equilibrando parques, compras, gastronomia e descanso conforme o perfil do usuário.
 
@@ -124,12 +123,12 @@ IMPORTANTE: Só acione a function 'roteiro' após toda a coleta obrigatória. Co
         messages.extend(history) # type: ignore
         
         response = await self.client.chat.completions.create(
-            model=self.MODEL,
+            model="gpt-4o-mini",
             messages=messages,
             tools=self.tools,
             tool_choice="auto",
-            temperature=self.TEMPERATURE,
-            max_tokens=self.MAX_TOKENS
+            temperature=0.5,
+            max_tokens=2048
         )
         
         message = response.choices[0].message
