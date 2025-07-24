@@ -2,7 +2,7 @@ import os
 import requests
 import re
 import time
-import random
+from clients.zapi_client import zapi_client
 from dotenv import load_dotenv
 from utils.orlando_parks import get_orlando_parks
 
@@ -10,15 +10,9 @@ from utils.orlando_parks import get_orlando_parks
 load_dotenv()
 
 class ZAPIService:
-    def __init__(self):
-        # Usando as variáveis de ambiente configuradas
-        self._base_url = os.getenv("ZAPI_BASE_URL")
-        self._instance_id = os.getenv("ZAPI_INSTANCE_ID")
-        self._instance_token = os.getenv("ZAPI_INSTANCE_TOKEN")
-        self._client_token = os.getenv("ZAPI_CLIENT_TOKEN")
-        self._headers = {"Content-Type": "application/json"}
-        
-        print(f"🔧 ZAPI configurada com: \nURL: {self._base_url}\nID: {self._instance_id}")
+    
+    def get_parks(self):
+        print(self.some_attr)
         
     def __validate_message(self, message: str) -> bool:
         # Trata a mensagem
