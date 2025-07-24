@@ -1,4 +1,3 @@
-# services/response_orchestrator.py
 from interfaces.orchestrators.response_orchestrator_interface import IResponseOrchestrator
 from container.repositories import RepositoryContainer
 from typing import Coroutine, Any
@@ -9,21 +8,16 @@ class ResponseOrchestrator(IResponseOrchestrator):
     1. Usar instruções detalhadas para delegar a um agente.
     2. Buscar dados do usuário para passar ao agente.
     """
-    
-    # --- MUDANÇA 1: O construtor agora recebe o container de repositórios ---
+    # O construtor recebe o container de repositórios
     def __init__(self, ai_client, agents: dict, repositories: RepositoryContainer):
         self.ai = ai_client
         self.agents = agents
-        
         user_repo = repositories.get("user")
         if not user_repo:
             raise ValueError("Repositório de usuário ('user') não encontrado no container.")
         self.user_repo = user_repo
 
-    # A assinatura do método agora corresponde à interface final
     async def execute(self, context: list[dict], phone: str) -> Coroutine[Any, Any, list[dict] | str]:
-        
-        # --- MUDANÇA 2: As instruções agora são as exatas que você especificou ---
         instructions = (
             "Sua função é delegar a resposta da pergunta do usuário para o agente que melhor consegue responder. "
             "Você tem uma lista de cinco agente aos quais você pode delegar essas resposta: "
@@ -42,7 +36,7 @@ class ResponseOrchestrator(IResponseOrchestrator):
             {"role": "system", "content": instructions}
         ] + last_user_message
 
-        # --- MUDANÇA 3: A chamada à API foi atualizada e otimizada ---
+        # Chamada à API de IA
         response = await self.ai.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages_for_api,
@@ -51,7 +45,7 @@ class ResponseOrchestrator(IResponseOrchestrator):
         )
 
         agent_code = response.choices[0].message.content.strip()
-        
+
         # Mantém a lógica de fallback
         if agent_code not in self.agents:
             agent_code = "#1"
@@ -59,9 +53,9 @@ class ResponseOrchestrator(IResponseOrchestrator):
         agent = self.agents.get(agent_code)
         if not agent:
             raise ValueError(f"Agente com código '{agent_code}' não foi encontrado.")
-            
-        # --- MUDANÇA 4: Busca o usuário e o passa para o agente ---
+
+        # Busca o usuário e o passa para o agente 
         user = self.user_repo.get_user_by_phone(phone)
-        
+
         # O contexto COMPLETO é passado para o agente final, junto com os dados do usuário
         return await agent.execute(context=context, phone=phone, user=user)

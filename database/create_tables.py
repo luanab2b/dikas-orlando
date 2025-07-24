@@ -1,10 +1,13 @@
-import os
-import dotenv
 from sqlalchemy import create_engine, inspect
 import urllib.parse
 from dotenv import load_dotenv
 from database.config import Base
 from models import User, Message, ConversationContext, ContextMessage, ContextDocument
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 load_dotenv()
 
 DB_HOST = os.getenv('DB_HOST')
