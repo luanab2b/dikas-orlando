@@ -36,5 +36,5 @@ class AgentContainer:
     def get(self, agent_id: str) -> IAgent | None:
         return self._agents.get(agent_id)
 
-    def all(self) -> dict[str, IAgent]:
-        return self._agents
+    def all(self) -> list[IAgent]:
+        return list(self._agents.values())

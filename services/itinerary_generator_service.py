@@ -3,6 +3,10 @@ import json
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from typing import TypedDict
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 class ItineraryGeneratorService:
     """
@@ -10,8 +14,8 @@ class ItineraryGeneratorService:
     através de uma chamada de Chat Completion.
     """
     MODEL = "gpt-4o-mini"
-    TEMPERATURE = 0.7
-    MAX_TOKENS = 3500
+    TEMPERATURE = 0.5
+    MAX_TOKENS = 488
 
     def __init__(self, client: AsyncOpenAI):
         self.client = client
@@ -45,10 +49,10 @@ class ItineraryGeneratorService:
 
         print("INFO: Gerando o roteiro final com Chat Completions...")
         response = await self.client.chat.completions.create(
-            model=self.MODEL,
+            model="gpt-4o-mini",
             messages=messages,
-            temperature=self.TEMPERATURE,
-            max_tokens=self.MAX_TOKENS
+            temperature=0.5,
+            max_tokens=488
         )
 
         final_itinerary = response.choices[0].message.content

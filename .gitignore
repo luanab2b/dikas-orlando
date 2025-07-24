@@ -7,3 +7,7 @@ venv/
 # Ignorar caches do Python
 __pycache__/
 pyrightconfig.json
+
+# testes
+tests/
+teste.ipynb
